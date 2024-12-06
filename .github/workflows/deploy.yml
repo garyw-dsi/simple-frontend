@@ -1,0 +1,28 @@
+name: Deploy Frontend to ECR
+
+on:
+  push:
+    branches:
+      - main  # Run this workflow on push to the main branch
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Frontend Docker Image
+        run: |
+          docker build -t docker-frontend .
+          docker tag docker-frontend:latest ${{ secrets.ECR_REPOSITORY_URI }}:latest
+
+      - name: Push Frontend Docker Image
+        run: |
+          docker push ${{ secrets.ECR_REPOSITORY_URI }}:latest
