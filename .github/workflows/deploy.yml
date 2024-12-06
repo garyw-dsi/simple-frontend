@@ -1,31 +1,35 @@
-name: Deploy Frontend to ECR
+name: Build and Push Docker Image to ECR
 
 on:
   push:
     branches:
-      - main  # Run this workflow on push to the main branch
+      - main
 
 jobs:
-  deploy-frontend:
-    name: Deploy Frontend
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-        with:
-          region: ${{ secrets.AWS_REGION }}
-          registry-type: private
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Build Frontend Docker Image
-        run: |
-          docker build -t docker-frontend .
-          docker tag docker-frontend:latest ${{ secrets.ECR_REPOSITORY_URI }}:latest
+    - name: Log in to Amazon ECR
+      run: |
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-      - name: Push Frontend Docker Image
-        run: |
-          docker push ${{ secrets.ECR_REPOSITORY_URI }}:latest
+    - name: Build Docker image
+      run: docker build -t ${{ secrets.ECR_REPOSITORY_URI }} .
+
+    - name: Tag Docker image
+      run: docker tag ${{ secrets.ECR_REPOSITORY_URI }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_URI }}:latest
+
+    - name: Push Docker image to ECR
+      run: |
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY_URI }}:latest
